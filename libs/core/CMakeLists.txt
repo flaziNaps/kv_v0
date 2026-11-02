@@ -1,4 +1,5 @@
 add_library(kv_core STATIC
+    src/memory_store.cpp
     include/kv/core/store.hpp
     include/kv/core/memory_store.hpp
 )
