@@ -1,4 +1,4 @@
-add_executable(kv_core_build_smoke build_smoke.cpp)
+add_executable(kv_core_build_smoke store_test.cpp)
 target_link_libraries(kv_core_build_smoke PRIVATE KV::Core)
 
 # Checks build plumbing only; add behavioral tests with the KV implementation.

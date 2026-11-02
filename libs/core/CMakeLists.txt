@@ -1,5 +1,6 @@
 add_library(kv_core STATIC
-    src/core.cpp
+    include/kv/core/store.hpp
+    include/kv/core/memory_store.hpp
 )
 add_library(KV::Core ALIAS kv_core)
 
