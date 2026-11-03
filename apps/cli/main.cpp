@@ -52,13 +52,19 @@ void containsCommand(const Context& c){
     std::cout <<  (exists ? " true" : " false") << std::endl;
 }
 
+//调用showAll方法
+void showAllCommand(const Context& c){
+    c.store->showAll();
+}
+
 
 //全局静态命令表
 inline constexpr Command commandTable[] = {
-    {"set", setCommand,-3},
-    {"get",getCommand,2},
-    {"del",delCommand,2},
-    {"contains",containsCommand,2},
+    {"set", setCommand,-2},
+    {"get",getCommand,1},
+    {"del",delCommand,1},
+    {"contains",containsCommand,1},
+    {"showAll",showAllCommand,0},
 };
 
 
@@ -86,6 +92,7 @@ public:
         // 获取命令对象和参数数量
         const Command* cmd = it->second;//first指的key，second指的是value
         int argCount = c.argv.size() - 1; // Exclude the command itself
+        std::cout << argCount << std::endl;
         //判断参数数量是否符合要求
         if((cmd->arity >= 0 && argCount != cmd->arity) || (cmd->arity < 0 && argCount < -cmd->arity)){
             std::cout << "Invalid number of arguments for command: " << cmd->name << std::endl;

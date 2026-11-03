@@ -41,6 +41,9 @@ public:
 
     // 判断是否存在。const 表示"这个方法不修改存储"，所以能在 const 对象上调用。
     virtual bool contains(std::string_view key) const = 0;
+
+    //展示现在的所有数据
+    virtual void showAll() const = 0;
 };
 
 } // namespace kv

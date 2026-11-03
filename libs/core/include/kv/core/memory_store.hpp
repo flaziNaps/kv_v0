@@ -11,6 +11,7 @@ public:
     std::optional<std::string> get(std::string_view key) const;
     bool del(std::string_view key);
     bool contains(std::string_view key) const;
+    void showAll() const;
 };
 
 }

@@ -1,4 +1,5 @@
 #include <kv/core/memory_store.hpp>
+#include <iostream>
 
 //set命令实现
 void kv::MemoryStore::set(std::string_view key,std::string_view value){
@@ -20,4 +21,16 @@ bool kv::MemoryStore::del(std::string_view key){
 //contains命令实现
 bool kv::MemoryStore::contains(std::string_view key) const{
     return data_.find(std::string(key)) != data_.end();
+}
+
+//showAll命令实现
+void kv::MemoryStore::showAll() const{
+    if(data_.empty()){
+        std::cout << "No data in the store." << std::endl;
+        return;
+    }
+    std::cout << "Current data in the store:" << std::endl;
+    for(const auto& pair : data_){
+        std::cout << pair.first << ": " << pair.second << std::endl;
+    }
 }
