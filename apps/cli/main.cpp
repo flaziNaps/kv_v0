@@ -28,19 +28,37 @@ void commandParser(const std::string& line,std::vector<std::string>& argv){
     }
 }
 
-//业务函数得实现
+//调用背后实际的set方法
 void setCommand(const Context& c){
-    std::cout << "TODO" <<std::endl;
+    c.store->set(c.argv[1], c.argv[2]);
+    std::cout<< "set key sucess" <<std::endl;
 }
 
+//调用get方法
 void getCommand(const Context& c){
-    std::cout << "TODO" <<std::endl;
+    auto value = c.store->get(c.argv[1]);
+    std::cout << (value ? *value : "Key not found") << std::endl;  
 }
+
+//调用del方法
+void delCommand(const Context& c){
+    bool deleted = c.store->del(c.argv[1]);
+    std::cout << "del key " << c.argv[1] << (deleted ? " sucess" : " failed") << std::endl;
+}
+
+//调用contains方法
+void containsCommand(const Context& c){
+    bool exists = c.store->contains(c.argv[1]);
+    std::cout <<  (exists ? " true" : " false") << std::endl;
+}
+
 
 //全局静态命令表
 inline constexpr Command commandTable[] = {
     {"set", setCommand,-3},
     {"get",getCommand,2},
+    {"del",delCommand,2},
+    {"contains",containsCommand,2},
 };
 
 
@@ -88,6 +106,7 @@ int main()
     server.init();
     //开始读取命令行输入
     std::string line;
+    kv::MemoryStore store;
     while(true){
         //显示提示符
         std::cout << "kvstore> " << std::flush;
@@ -101,7 +120,6 @@ int main()
         std::vector<std::string> argv;
         commandParser(line,argv);
         //TODO 可以添加一个判断存储方式的方法
-        kv::MemoryStore store;
         // 创建上下文对象，处理命令
         Context ctx{&store, argv};
         server.processCommand(ctx);
