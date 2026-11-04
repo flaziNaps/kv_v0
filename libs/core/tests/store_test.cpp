@@ -1,8 +1,13 @@
 #include <kv/core/memory_store.hpp>
-
+#include <iostream>
 int main()
 {
-    // 至少验证 MemoryStore 已经能实例化（不再是抽象类）、且链接到 KV::Core 成功。
-    kv::MemoryStore store;
-    return 0;
+   
+
+    std::unordered_map<std::string, std::string> m;
+    std::cout << m.size() << "\n";   // 预测：?
+    auto v = m["nokey"];             // 读一个不存在的键
+    std::cout << "[" << v << "]\n";  // 预测：?
+    std::cout << m.size() << "\n";   // 预测：?
+
 }

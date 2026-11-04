@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <sstream>
 #include <kv/core/memory_store.hpp>
+
+//命令状态
+enum class CmdResult {Continue,Quit};
+
 // 上下文结构体，用于传递命令行参数
 struct Context{
     kv::Store* store;//store接口
@@ -15,7 +19,7 @@ struct Context{
 //命令结构体
 struct Command{
     std::string_view name;
-    void (*proc)(const Context&);
+    CmdResult (*proc)(const Context&);
     int arity;//参数数量要求：正数表示严格相等，负数（如 -3）表示至少需要 abs(-3) 个参数
 };
 
@@ -29,34 +33,43 @@ void commandParser(const std::string& line,std::vector<std::string>& argv){
 }
 
 //调用背后实际的set方法
-void setCommand(const Context& c){
+CmdResult setCommand(const Context& c){
     c.store->set(c.argv[1], c.argv[2]);
     std::cout<< "set key sucess" <<std::endl;
+    return CmdResult::Continue;
 }
 
 //调用get方法
-void getCommand(const Context& c){
+CmdResult getCommand(const Context& c){
     auto value = c.store->get(c.argv[1]);
-    std::cout << (value ? *value : "Key not found") << std::endl;  
+    std::cout << (value ? *value : "Key not found") << std::endl;
+    return CmdResult::Continue;  
 }
 
 //调用del方法
-void delCommand(const Context& c){
+CmdResult delCommand(const Context& c){
     bool deleted = c.store->del(c.argv[1]);
     std::cout << "del key " << c.argv[1] << (deleted ? " sucess" : " failed") << std::endl;
+    return CmdResult::Continue;
 }
 
 //调用contains方法
-void containsCommand(const Context& c){
+CmdResult containsCommand(const Context& c){
     bool exists = c.store->contains(c.argv[1]);
     std::cout <<  (exists ? " true" : " false") << std::endl;
+    return CmdResult::Continue;
 }
 
 //调用showAll方法
-void showAllCommand(const Context& c){
+CmdResult showAllCommand(const Context& c){
     c.store->showAll();
+    return CmdResult::Continue;
 }
 
+//调用quit方法
+CmdResult quitCommand(const Context&){
+    return CmdResult::Quit;
+}
 
 //全局静态命令表
 inline constexpr Command commandTable[] = {
@@ -65,6 +78,7 @@ inline constexpr Command commandTable[] = {
     {"del",delCommand,1},
     {"contains",containsCommand,1},
     {"showAll",showAllCommand,0},
+    {"quit",quitCommand,0},
 };
 
 
@@ -78,28 +92,27 @@ public:
         }
     }
 
-    void processCommand(const Context& c){
+    CmdResult processCommand(const Context& c){
         if(c.argv.empty()){
             std::cout << "No command provided" << std::endl;
-            return;
+            return CmdResult::Continue;
         }
         // 查找命令是否存在哈希表中
         auto it = commands_.find(c.argv[0]);
         if(it == commands_.end()){//end用来判断是否找不到
             std::cout << "Unknown command: " << c.argv[0] << std::endl;
-            return;
+            return CmdResult::Continue;
         }
         // 获取命令对象和参数数量
         const Command* cmd = it->second;//first指的key，second指的是value
         int argCount = c.argv.size() - 1; // Exclude the command itself
-        std::cout << argCount << std::endl;
         //判断参数数量是否符合要求
         if((cmd->arity >= 0 && argCount != cmd->arity) || (cmd->arity < 0 && argCount < -cmd->arity)){
             std::cout << "Invalid number of arguments for command: " << cmd->name << std::endl;
-            return;
+            return CmdResult::Continue;
         }
         // 调用处理函数
-        cmd->proc(c);
+        return cmd->proc(c);
     }
     
 
@@ -129,7 +142,7 @@ int main()
         //TODO 可以添加一个判断存储方式的方法
         // 创建上下文对象，处理命令
         Context ctx{&store, argv};
-        server.processCommand(ctx);
+        if(server.processCommand(ctx) == CmdResult::Quit) break;
     }
     return 0;
 }
