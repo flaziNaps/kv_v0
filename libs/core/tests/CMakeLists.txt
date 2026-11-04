@@ -1,6 +1,6 @@
-add_executable(kv_core_build_smoke store_test.cpp)
-target_link_libraries(kv_core_build_smoke PRIVATE KV::Core)
+add_executable(kv_core_test store_test.cpp)
+target_link_libraries(kv_core_test PRIVATE KV::Core)
 
-# Checks build plumbing only; add behavioral tests with the KV implementation.
-add_test(NAME kv.core.build_smoke COMMAND kv_core_build_smoke)
-set_tests_properties(kv.core.build_smoke PROPERTIES TIMEOUT 5)
+# store_test.cpp 里是对 MemoryStore 的行为断言；断言失败会以非零退出码报错。
+add_test(NAME kv.core.test COMMAND kv_core_test)
+set_tests_properties(kv.core.test PROPERTIES TIMEOUT 5)
