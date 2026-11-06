@@ -14,7 +14,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-                "BUILD_TESTING": "ON"
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "OFF"
             }
         },
         {
@@ -23,7 +24,8 @@
             "inherits": "debug",
             "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_BENCHMARKS": "ON"
             }
         },
         {

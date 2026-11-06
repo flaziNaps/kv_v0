@@ -21,5 +21,8 @@ jobs:
         run: cmake --build --preset ${{ matrix.preset }} --parallel 2
       - name: Test
         run: ctest --preset ${{ matrix.preset }} --no-tests=error
+      - name: Run benchmark smoke check
+        if: matrix.preset == 'release'
+        run: ./build/release/libs/core/benchmarks/kv_core_bench --benchmark_min_time=0.01s
       - name: Install
         run: cmake --install build/${{ matrix.preset }} --prefix build/install

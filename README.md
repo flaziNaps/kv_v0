@@ -46,7 +46,6 @@ git --version
 g++ --version
 cmake --version
 ninja --version
-bash --version
 ```
 
 每条命令都应显示版本号。项目要求 **CMake 3.21 或以上**、支持 **C++20** 的编译器，以及 Ninja。Ubuntu 24.04 仓库提供的这些工具可以用于本项目。
@@ -55,7 +54,7 @@ bash --version
 
 macOS 需要先安装 Xcode 命令行工具（`xcode-select --install`）。如果已经安装 Homebrew，可以执行 `brew install cmake ninja`；之后使用下文相同的下载、编译和运行命令。
 
-其他 Linux 发行版请用自己的包管理器安装 Git、C++20 编译器、CMake、Ninja 和 Bash。当前测试脚本依赖 Bash，Windows 新手建议使用上面的 WSL 路径。
+其他 Linux 发行版请用自己的包管理器安装 Git、C++20 编译器、CMake 和 Ninja。测试使用 GoogleTest，不依赖 Bash 脚本；Windows 新手仍建议使用上面的 WSL 路径。
 
 ## 2. 下载项目，进入项目目录
 
@@ -90,7 +89,7 @@ cmake --build --preset debug --parallel
 - 第一条命令检查编译环境，并在 `build/debug` 中生成构建文件；看到 `Configuring done` 和 `Generating done` 表示配置完成。
 - 第二条命令把源代码编译成可执行程序；执行结束且没有报错后，就可以启动。
 
-这里的 `debug` 是仓库已经写好的构建配置名称，不需要自己创建或修改配置文件。项目不需要下载第三方 C++ 库。
+这里的 `debug` 是仓库已经写好的构建配置名称，不需要自己创建或修改配置文件。首次配置会通过 Git 从 GitHub 下载 GoogleTest v1.17.0；Release 默认还会下载 Google Benchmark v1.9.4。请保持网络可用，无需全局安装这两个框架。
 
 以后修改 C++ 源代码后，重新执行第二条编译命令即可。修改 CMake 配置或测试定义后，需要先重新执行第一条命令，再编译。
 
@@ -158,24 +157,22 @@ kvstore> quit
 ctest --preset debug
 ```
 
-正常情况下会运行三个测试：
+目前共有 24 个 GoogleTest 用例：7 个核心存储用例，以及 17 个 CLI 用例。CTest 会分别显示每个用例的名称，全部通过时显示 `100% tests passed`。
 
-| 测试名称 | 检查内容 |
-| --- | --- |
-| `kv.core.test` | 核心存储功能 |
-| `kv.cli.smoke` | 程序能启动，并通过 `quit` 正常退出 |
-| `kv.cli.integration` | 通过真实命令输入检查 CLI 行为 |
+核心测试覆盖读写、覆盖、删除及存在性判断；CLI 测试向与主程序共用的命令循环输入命令，检查提示、参数校验、showAll、quit 和输入结束行为。CLI 测试在进程内执行，无需 Bash，不会等待键盘输入。
 
-最后看到下面的信息，表示全部通过：
-
-```text
-100% tests passed, 0 tests failed out of 3
-```
-
-如果测试失败，终端会显示失败测试的输出。想只检查 CLI 冒烟测试并查看详细过程，可以运行：
+只运行核心测试或 CLI 测试：
 
 ```bash
-ctest --preset debug -R '^kv.cli.smoke$' -V
+ctest --preset debug -R '^MemoryStoreTest\.'
+ctest --preset debug -R '^Commands/CliTest\.'
+```
+
+列出所有测试，或查看详细执行输出：
+
+```bash
+ctest --preset debug -N
+ctest --preset debug -V
 ```
 
 ## 6. 常见问题
@@ -190,7 +187,8 @@ ctest --preset debug -R '^kv.cli.smoke$' -V
 | 输入 `cmake`、`ctest` 等命令却提示 `Unknown command` | 你还在程序内部。先输入 `quit`，回到终端再执行这些命令。 |
 | 提示 `Invalid number of arguments` | 对照命令表检查参数数量，例如 `get` 后需要一个 key，`set` 后需要 key 和 value。 |
 | 重新启动后找不到之前的数据 | 当前是内存存储，退出后数据就会丢失。 |
-| `kv.cli.smoke` 超时 | 确认使用了包含自动输入 `quit` 的测试配置，然后重新执行 `cmake --preset debug`、编译和测试。仅修改 CMake 文件不会自动更新已经生成的 CTest 定义。 |
+| 仍显示旧的 `kv.cli.smoke` / `kv.cli.integration` 测试 | 重新执行 `cmake --preset debug`，再编译和测试，以更新旧的测试定义。 |
+| GoogleTest / Benchmark 下载失败 | 检查本机 Git 能否通过 HTTPS 连接 GitHub，以及代理设置，然后重新配置；不要关闭 TLS 校验。 |
 
 仍然失败时，请把**执行的命令和完整报错文本**一起发给维护者，方便定位问题。
 
@@ -217,7 +215,38 @@ cmake --install build/release --prefix ./build/install
 ./build/install/bin/kv_cli
 ```
 
-## 8. 代码在哪里？
+## 8. 运行性能测试（Google Benchmark）
+
+第 7 步的 Release 配置默认启用性能测试。配置、编译完成后运行：
+
+```bash
+./build/release/libs/core/benchmarks/kv_core_bench
+```
+
+目前测量两类操作：`BM_GetExisting` 在不同数据量下读取已有 key，`BM_SetExisting` 使用不同长度的 value 覆盖已有 key。初始化数据和控制台输出不计入测量循环；读取包含返回字符串副本的成本，覆盖写包含实际字符串赋值的成本。
+
+快速验证能否运行，或导出 JSON 结果：
+
+```bash
+./build/release/libs/core/benchmarks/kv_core_bench --benchmark_min_time=0.01s
+./build/release/libs/core/benchmarks/kv_core_bench --benchmark_out=build/release/benchmark.json --benchmark_out_format=json
+```
+
+性能测试单独运行，不属于 `ctest`。用 Release 测性能，Debug 不适合作为正式性能结论；不同机器、CPU 负载和电源设置会影响结果，不设置固定耗时通过阈值。
+
+两个框架有独立开关：`BUILD_TESTING` 控制 GoogleTest，`BUILD_BENCHMARKS` 控制 Google Benchmark。Debug 默认只启用 GoogleTest，Release 默认两者都启用。例如，只编译可执行程序、不下载任何测试框架：
+
+```bash
+cmake -S . -B build/minimal -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_BENCHMARKS=OFF
+cmake --build build/minimal --parallel
+./build/minimal/apps/cli/kv_cli
+```
+
+如果不需要 Release 性能测试，可以使用 `cmake --preset release -DBUILD_BENCHMARKS=OFF`，之后再编译。
+
+框架的接入方式参照 [GoogleTest 官方 CMake 指南](https://google.github.io/googletest/quickstart-cmake.html) 和 [Google Benchmark 用户指南](https://github.com/google/benchmark/blob/v1.9.4/docs/user_guide.md)。
+
+## 9. 代码在哪里？
 
 ```text
 kv_v0/
@@ -225,14 +254,18 @@ kv_v0/
 ├── CMakeLists.txt             # 构建入口
 ├── CMakePresets.json          # Debug / Release 预设
 ├── apps/cli/
-│   ├── main.cpp               # 命令输入、解析和执行
-│   └── tests/cli_integration.sh # CLI 集成测试
+│   ├── main.cpp               # 程序入口
+│   ├── cli.cpp                # 命令输入、解析和执行
+│   ├── cli.hpp                # 命令循环声明
+│   └── tests/cli_test.cpp     # GoogleTest CLI 测试
 ├── libs/core/
 │   ├── include/kv/core/       # 存储接口和头文件
 │   ├── src/memory_store.cpp   # 内存存储实现
-│   └── tests/store_test.cpp   # 核心功能测试
+│   ├── tests/store_test.cpp   # GoogleTest 核心功能测试
+│   └── benchmarks/store_benchmark.cpp # Google Benchmark 性能测试
+├── cmake/Dependencies.cmake   # 固定版本的测试框架依赖
 ├── docs/architecture.md       # 架构说明
 └── build/                     # 配置、编译后生成的文件
 ```
 
-运行项目只需要前面的步骤；想了解内部实现，再从 `apps/cli/main.cpp` 和 `libs/core/src/memory_store.cpp` 开始阅读。
+运行项目只需要前面的步骤；想了解内部实现，再从 `apps/cli/cli.cpp` 和 `libs/core/src/memory_store.cpp` 开始阅读。
